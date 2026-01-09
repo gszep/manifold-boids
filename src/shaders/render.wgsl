@@ -36,10 +36,9 @@ fn frag(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
     let x = vec2<i32>(uv * vec2<f32>(canvas.size));
     var color = vec3f(0.05, 0.05, 0.1);
 
-    let index = textureLoad(index_texture, x).x - 1u;
+    let index = textureLoad(index_texture, x).x - 1;
     let feature = nodes[index].features;
 
     color += vec3<f32>(feature[0], feature[1], feature[2]);
-    
     return vec4<f32>(color, 1.0);
 }

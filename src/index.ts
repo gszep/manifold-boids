@@ -35,7 +35,7 @@ const shaderIncludes: Record<string, string> = {
 
 const NODE_COUNT = 10000;
 const WORKGROUP_SIZE = 256;
-const FEATURE_DIMENSION = 3;
+const FEATURE_DIMENSION = 4;
 
 // Inject constants into shader includes
 shaderIncludes.nodes = shaderIncludes.nodes.replaceAll(
@@ -63,7 +63,6 @@ async function main() {
       height: size.height,
     },
     /*format=*/ {
-      [BINDINGS[GROUP_INDEX].TEXTURE.RENDER]: "r32float",
       [BINDINGS[GROUP_INDEX].TEXTURE.INDEX]: "r32uint",
       [BINDINGS[GROUP_INDEX].TEXTURE.RECENCY]: "r32float",
     }
