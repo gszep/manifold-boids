@@ -1,119 +1,87 @@
 /**
- * Simple MNIST dataloader
- * Fetches MNIST digits from a public JSON source or generates synthetic data
+ * MNIST dataloader using the mnist NPM package
+ * Provides real handwritten digit data for the simulation
  */
 
-interface MNISTDigit {
-  label: number;
-  pixels: Uint8Array;
+import * as mnist from "mnist";
+
+// Type definitions for the MNIST data structure
+interface MnistItem {
+  input: number[]; // An array of 784 numbers (28x28 pixel values flattened)
+  output: number[]; // An array of 10 numbers (one-hot encoded label)
 }
 
-interface MNISTDataset {
-  images: number[][];
-  labels: number[];
+interface MnistSet {
+  training: MnistItem[];
+  test: MnistItem[];
 }
 
-// Public MNIST JSON sources that work
-const MNIST_SOURCES = [
-  // TensorFlow.js example dataset (small subset)
-  "https://storage.googleapis.com/tfjs-examples/mnist_data.json",
-  // Kaggle MNIST JSON (if available)
-  "https://raw.githubusercontent.com/firstcontributions/mnist-dataset/main/mnist.json",
-];
+let cachedMNISTData: MnistSet | null = null;
 
 /**
- * Fetch MNIST data from public JSON sources
- * Falls back to synthetic generation if all sources fail
+ * Load MNIST dataset from the mnist package
+ * Returns the MNIST set containing training and test data
  */
-async function fetchMNISTData(count: number = 1000): Promise<MNISTDataset> {
-  // Try each MNIST source
-  for (const source of MNIST_SOURCES) {
-    try {
-      console.log(`Fetching MNIST from ${source}...`);
-      
-      // Create abort controller for timeout (5 seconds)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+function loadMNISTData(): MnistSet {
+  if (cachedMNISTData) {
+    return cachedMNISTData;
+  }
 
-      const response = await fetch(source, { signal: controller.signal });
-      clearTimeout(timeoutId);
+  console.log("Loading MNIST data from mnist package...");
 
-      if (!response.ok) {
-        console.warn(`Source ${source} returned ${response.status}`);
-        continue;
-      }
+  // Load the MNIST dataset with specified splits
+  // 50,000 training samples and 10,000 test samples (standard split)
+  const data = mnist.set(50000, 10000);
 
-      const data = await response.json();
-      console.log(`Successfully loaded MNIST from ${source}`);
+  console.log(
+    `Successfully loaded MNIST dataset: ${data.training.length} training + ${data.test.length} test samples`
+  );
 
-      // Parse whatever format we got
-      return parseJsonMNIST(data, count);
-    } catch (error) {
-      console.warn(`Failed to fetch from ${source}:`, error);
-      continue;
+  cachedMNISTData = data;
+  return data;
+}
+
+/**
+ * Load MNIST features and return as normalized feature vectors
+ * Extracts the input arrays from MNIST items and normalizes them to [0, 1]
+ * (They're already normalized by the mnist package, but we ensure it)
+ */
+export async function loadMNISTFeatures(
+  count: number = 10000
+): Promise<number[][]> {
+  try {
+    const dataset = loadMNISTData();
+
+    // Combine training and test sets
+    const allData = [...dataset.training, ...dataset.test];
+
+    // Limit to requested count
+    const selectedData = allData.slice(0, count);
+
+    if (selectedData.length === 0) {
+      throw new Error("No MNIST data available");
     }
+
+    console.log(`Using ${selectedData.length} MNIST samples`);
+
+    // Extract input arrays and ensure they're normalized to [0, 1]
+    // The mnist package provides pre-normalized values, but we clamp just to be safe
+    return selectedData.map((item) =>
+      item.input.map((val) => Math.max(0, Math.min(1, val)))
+    );
+  } catch (error) {
+    console.error("Failed to load MNIST features:", error);
+    console.warn("Falling back to synthetic MNIST data");
+    return generateSyntheticMNIST(count);
   }
-
-  // All sources failed, use synthetic
-  console.warn(
-    "All MNIST sources failed. Using synthetic dataset. For real MNIST, consider:"
-  );
-  console.warn(
-    "1. Download from https://yann.lecun.com/exdb/mnist/ (requires binary parsing)"
-  );
-  console.warn(
-    "2. Use Kaggle API: kaggle datasets download -d mnguyen0312/mnist"
-  );
-  console.warn("3. Use TensorFlow Datasets: tfds.load('mnist')");
-
-  return generateSyntheticMNIST(count);
 }
 
 /**
- * Parse MNIST data from various JSON formats
- */
-function parseJsonMNIST(data: any, count: number): MNISTDataset {
-  const images: number[][] = [];
-  const labels: number[] = [];
-
-  // TensorFlow.js format: { train: [...], test: [...] }
-  if (data.train && Array.isArray(data.train)) {
-    const samples = data.train.slice(0, count);
-    samples.forEach((sample: any) => {
-      images.push(
-        (sample.image || sample.pixels || Object.values(sample)).flat() as number[]
-      );
-      labels.push(sample.label || 0);
-    });
-    return { images, labels };
-  }
-
-  // Direct array format: [{image: [...], label: ...}, ...]
-  if (Array.isArray(data)) {
-    const samples = data.slice(0, count);
-    samples.forEach((sample: any) => {
-      if (sample.image && sample.label !== undefined) {
-        images.push(Array.from(sample.image) as number[]);
-        labels.push(sample.label);
-      }
-    });
-    if (images.length > 0) {
-      return { images, labels };
-    }
-  }
-
-  // If parsing failed, fall back to synthetic
-  console.warn("Could not parse MNIST JSON format, generating synthetic data");
-  return generateSyntheticMNIST(count);
-}
-
-/**
- * Generate synthetic MNIST-like data locally
+ * Generate synthetic MNIST-like data locally as fallback
  * Creates base patterns for 10 digits, then reuses them with variations
  */
-function generateSyntheticMNIST(count: number): MNISTDataset {
+function generateSyntheticMNIST(count: number): number[][] {
   const images: number[][] = [];
-  const labels: number[] = [];
 
   // Pre-generate base patterns for each digit (0-9)
   const basePatterns: number[][] = [];
@@ -135,7 +103,9 @@ function generateSyntheticMNIST(count: number): MNISTDataset {
             value = Math.abs(y - 10) < 2 || Math.abs(y - 18) < 2 ? 255 : 0;
             break;
           case 3: // Right-side lines
-            value = x > 15 && (Math.abs(y - 10) < 2 || Math.abs(y - 18) < 2) ? 255 : 0;
+            value = x > 15 && (Math.abs(y - 10) < 2 || Math.abs(y - 18) < 2)
+              ? 255
+              : 0;
             break;
           case 4: // Cross
             value = Math.abs(x - 14) < 2 || Math.abs(y - 14) < 2 ? 255 : 0;
@@ -179,21 +149,10 @@ function generateSyntheticMNIST(count: number): MNISTDataset {
       const noise = (Math.random() - 0.5) * 40;
       return Math.max(0, Math.min(255, p + noise));
     });
-    
-    images.push(pixels);
-    labels.push(label);
+
+    // Normalize to [0, 1]
+    images.push(pixels.map((p) => p / 255));
   }
 
-  return { images, labels };
-}
-
-/**
- * Load MNIST dataset and return as feature vectors
- * Each vector is normalized to [0, 1]
- */
-export async function loadMNISTFeatures(count: number = 10000): Promise<number[][]> {
-  const dataset = await fetchMNISTData(count);
-
-  // Normalize pixel values from [0, 255] to [0, 1]
-  return dataset.images.map((pixels) => pixels.map((p) => p / 255));
+  return images;
 }
