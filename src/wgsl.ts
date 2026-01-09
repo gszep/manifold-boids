@@ -209,6 +209,11 @@ export class Struct {
   public readonly byteSize: number;
 
   /**
+   * The number of elements in the buffer.
+   */
+  public readonly count: number;
+
+  /**
    * The alignment of the struct, determined by the largest alignment
    * of its members.
    */
@@ -296,11 +301,12 @@ export class Struct {
       bufferDescriptor.size = 1;
     }
 
-    bufferDescriptor.size = bufferDescriptor.size * this.byteSize;
+    this.count = bufferDescriptor.size as number;
+    bufferDescriptor.size = this.count * this.byteSize;
     this._gpubuffer = device.createBuffer(bufferDescriptor as GPUBufferDescriptor);
 
     // 7. Create the local CPU-side ArrayBuffer
-    this._buffer = new ArrayBuffer(this.byteSize);
+    this._buffer = new ArrayBuffer(bufferDescriptor.size);
 
     // --- Add dynamic getters/setters ---
     const dataView = new DataView(this._buffer);
@@ -312,9 +318,9 @@ export class Struct {
       const { baseType, componentCount, baseTypeSize } = fieldType;
 
       // Helper function to set a single component at its byte offset
-      const setComponent = (index: number, value: number | boolean) => {
+      const setComponent = (elementIndex: number, index: number, value: number | boolean) => {
         // This is the byte offset *for this specific component*
-        const componentOffset = offset + index * baseTypeSize;
+        const componentOffset = elementIndex * this.byteSize + offset + index * baseTypeSize;
         try {
           switch (baseType) {
             case "f32":
@@ -339,14 +345,14 @@ export class Struct {
           this.device.queue.writeBuffer(this._gpubuffer, componentOffset, componentData);
         } catch (e) {
           console.error(
-            `Error setting field '${fieldName}' (component ${index}) at offset ${componentOffset}: ${e}`
+            `Error setting field '${fieldName}' (element ${elementIndex}, component ${index}) at offset ${componentOffset}: ${e}`
           );
         }
       };
 
       // Helper function to get a single component from its byte offset
-      const getComponent = (index: number): number | boolean => {
-        const componentOffset = offset + index * baseTypeSize;
+      const getComponent = (elementIndex: number, index: number): number | boolean => {
+        const componentOffset = elementIndex * this.byteSize + offset + index * baseTypeSize;
         try {
           switch (baseType) {
             case "f32":
@@ -364,46 +370,75 @@ export class Struct {
           }
         } catch (e) {
           console.error(
-            `Error getting field '${fieldName}' (component ${index}) at offset ${componentOffset}: ${e}`
+            `Error getting field '${fieldName}' (element ${elementIndex}, component ${index}) at offset ${componentOffset}: ${e}`
           );
           return baseType === "bool" ? false : 0;
         }
       };
 
+      const fieldProxy = new Proxy({} as any, {
+        get: (_, prop) => {
+          if (prop === Symbol.iterator) {
+            const self = this;
+            return function* () {
+              for (let i = 0; i < self.count; i++) {
+                yield fieldProxy[i];
+              }
+            };
+          }
+          if (prop === "length") return this.count;
+
+          const elementIndex = Number(prop);
+          if (!isNaN(elementIndex) && elementIndex < this.count) {
+            if (componentCount === 1) return getComponent(elementIndex, 0);
+            return new Proxy({} as any, {
+              get: (__, subProp) => {
+                if (subProp === Symbol.iterator) {
+                  return function* () {
+                    for (let i = 0; i < componentCount; i++) {
+                      yield getComponent(elementIndex, i);
+                    }
+                  };
+                }
+                if (subProp === "length") return componentCount;
+
+                const componentIndex = Number(subProp);
+                if (!isNaN(componentIndex) && componentIndex < componentCount)
+                  return getComponent(elementIndex, componentIndex);
+                return undefined;
+              },
+              set: (__, subProp, val) => {
+                const componentIndex = Number(subProp);
+                if (!isNaN(componentIndex) && componentIndex < componentCount) {
+                  setComponent(elementIndex, componentIndex, val);
+                  return true;
+                }
+                return false;
+              },
+            });
+          }
+          return undefined;
+        },
+        set: (_, prop, val) => {
+          const elementIndex = Number(prop);
+          if (!isNaN(elementIndex) && elementIndex < this.count) {
+            if (componentCount === 1) {
+              setComponent(elementIndex, 0, val);
+            } else if (Array.isArray(val) && val.length === componentCount) {
+              for (let j = 0; j < componentCount; j++) setComponent(elementIndex, j, val[j]);
+            }
+            return true;
+          }
+          return false;
+        },
+      });
+
       Object.defineProperty(this, fieldName, {
         enumerable: true,
         configurable: true, // Allows re-definition
-        get: () => {
-          // Scalar: return the value directly
-          if (componentCount === 1) {
-            return getComponent(0);
-          }
-          // Vector/Matrix/Array: return a new array
-          const values: (number | boolean)[] = [];
-          for (let i = 0; i < componentCount; i++) {
-            values.push(getComponent(i));
-          }
-          return values;
-        },
-        set: (value: number | boolean | (number | boolean)[]) => {
-          // Scalar: set the single value
-          if (componentCount === 1) {
-            setComponent(0, value as number | boolean);
-          }
-          // Vector/Matrix/Array: set all components from an array
-          else {
-            if (Array.isArray(value) && value.length === componentCount) {
-              for (let i = 0; i < componentCount; i++) {
-                setComponent(i, value[i]);
-              }
-            } else if (Array.isArray(value)) {
-              console.error(
-                `Field '${fieldName}' expects an array of length ${componentCount}, but got array of length ${value.length}.`
-              );
-            } else {
-              console.error(`Field '${fieldName}' expects an array, but got: ${typeof value}`);
-            }
-          }
+        get: () => fieldProxy,
+        set: (value: any) => {
+          fieldProxy[0] = value;
         },
       });
     }
