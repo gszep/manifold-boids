@@ -165,24 +165,32 @@ async function main() {
   ];
 
   const initializeNodes = () => {
+    // Pre-populate the CPU-side buffer directly
+    const view = new DataView(nodes._buffer);
+
     for (let i = 0; i < NODE_COUNT; i++) {
+      const base = i * nodes.byteSize;
+
       // id: u32
-      nodes.id[i] = i;
+      view.setUint32(base + nodes.offsets.id, i, true);
 
       // position: vec2<f32>
-      nodes.position[i] = [Math.random() * size.width, Math.random() * size.height];
+      view.setFloat32(base + nodes.offsets.position, Math.random() * size.width, true);
+      view.setFloat32(base + nodes.offsets.position + 4, Math.random() * size.height, true);
 
       // orientation: vec2<f32>
       const angle = Math.random() * 2 * Math.PI;
-      nodes.orientation[i] = [Math.cos(angle), Math.sin(angle)];
+      view.setFloat32(base + nodes.offsets.orientation, Math.cos(angle), true);
+      view.setFloat32(base + nodes.offsets.orientation + 4, Math.sin(angle), true);
 
       // features: array<f32, FEATURE_DIMENSION>
-      const features: number[] = [];
       for (let j = 0; j < FEATURE_DIMENSION; j++) {
-        features.push(Math.random());
+        view.setFloat32(base + nodes.offsets.features + j * 4, Math.random(), true);
       }
-      nodes.features[i] = features;
     }
+
+    // Single GPU write after populating entire buffer
+    device.queue.writeBuffer(nodes._gpubuffer, 0, nodes._buffer);
   };
   initializeNodes();
 
