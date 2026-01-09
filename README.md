@@ -12,6 +12,23 @@ This project implements a non-linear dimensionality reduction algorithm inspired
 4.  **Emergent Clustering**: Boids steer toward regions with higher feature similarity. Over time, boids with similar feature vectors follow each other's trails and form localized clusters.
 5.  **Spatial Embedding**: The final 2D positions of the boids serve as a low-dimensional representation of the original high-dimensional feature space, where spatial proximity correlates with feature similarity.
 
+## Simulation Controls
+
+The simulation provides several interactive parameters to tune the emergent behavior:
+
+### Algorithm Parameters
+- **Compute Steps**: Number of simulation iterations performed per animation frame. Higher values speed up the convergence.
+- **Sensor Angle**: The angle (in radians) of the left and right sensors relative to the boid's heading.
+- **Sensor Offset**: The distance from the boid to its sensors. This determines the "look-ahead" distance for feature detection.
+- **Steer Angle**: The maximum angle the boid can turn in a single step when it detects a similarity signal.
+- **Trail Decay Rate**: How quickly the deposited feature trails fade over time.
+
+### Interaction
+- **Mouse/Touch**: 
+  - **Left Click/Touch**: Attracts boids to the pointer.
+  - **Right Click / Multi-touch**: Repels boids from the pointer.
+  - **Scroll**: Adjusts the radius of influence for the attraction/repulsion.
+
 ## Build and Development
 
 ```bash
