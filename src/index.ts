@@ -177,16 +177,6 @@ async function main() {
     compute: { module: module, entryPoint: "update_textures" },
   });
 
-  const blur_horizontal = device.createComputePipeline({
-    layout: pipeline.layout,
-    compute: { module: module, entryPoint: "blur_horizontal" },
-  });
-
-  const blur_vertical = device.createComputePipeline({
-    layout: pipeline.layout,
-    compute: { module: module, entryPoint: "blur_vertical" },
-  });
-
   const WORKGROUP_COUNT_BUFFER = Math.ceil(NODE_COUNT / WORKGROUP_SIZE);
   const WORKGROUP_COUNT_TEXTURE: [number, number] = [
     Math.ceil(textures.size.width / Math.sqrt(WORKGROUP_SIZE)),
@@ -221,26 +211,6 @@ async function main() {
       pass.setPipeline(update_textures);
       pass.dispatchWorkgroups(...WORKGROUP_COUNT_TEXTURE);
 
-      pass.end();
-      device.queue.submit([encoder.finish()]);
-    }
-
-    // Blur textures
-    {
-      const encoder = device.createCommandEncoder();
-      const pass = encoder.beginComputePass();
-      pass.setBindGroup(pipeline.index, pipeline.bindGroup);
-      pass.setPipeline(blur_horizontal);
-      pass.dispatchWorkgroups(...WORKGROUP_COUNT_TEXTURE);
-      pass.end();
-      device.queue.submit([encoder.finish()]);
-    }
-    {
-      const encoder = device.createCommandEncoder();
-      const pass = encoder.beginComputePass();
-      pass.setBindGroup(pipeline.index, pipeline.bindGroup);
-      pass.setPipeline(blur_vertical);
-      pass.dispatchWorkgroups(...WORKGROUP_COUNT_TEXTURE);
       pass.end();
       device.queue.submit([encoder.finish()]);
     }
