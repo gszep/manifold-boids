@@ -13,9 +13,8 @@ struct BufferBindings {
 }
 
 struct TextureBindings {
-  PARAMETERS: i32,
-  FEATURE: i32,
-  RENDER: i32,
+  INDEX: i32,
+  RECENCY: i32,
 }
 
 const GROUP_INDEX = 0;
@@ -23,5 +22,5 @@ const BINDINGS = array<Bindings, 1>(
   Bindings(
     GROUP_INDEX,
     BufferBindings(0,1,2,3,4),
-    TextureBindings(5,6,7),
+    TextureBindings(5,6),
 ));

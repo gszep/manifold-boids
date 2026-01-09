@@ -42,13 +42,20 @@ fn wrap_vec2f(v: vec2f, size: vec2f) -> vec2f {
 }
 
 fn cosine_similarity(pos: vec2i, features: array<f32, FEATURE_DIMENSION>) -> f32 {
+    let id = textureLoad(index_texture, pos).x;
+    if (id == 0u) {
+        return 0.0;
+    }
+
+    let neighbor_features = nodes[id - 1u].features;
+
     var dot = 0.0;
     var norm_a_sq = 0.0;
     var norm_b_sq = 0.0;
 
     for (var i = 0u; i < FEATURE_DIMENSION; i++) {
         let a = features[i];
-        let b = textureLoad(feature_texture, pos, i32(i)).x;
+        let b = neighbor_features[i];
         dot += a * b;
         norm_a_sq += a * a;
         norm_b_sq += b * b;
@@ -72,11 +79,12 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
     let features = nodes[idx].features;
     let orientation = nodes[idx].orientation;
 
-    // drop feature trail with toroidal wrapping
-    for (var i = 0u; i < FEATURE_DIMENSION; i++) {
-        let trail_pos = vec2i(floor(position - orientation));
-        textureStore(feature_texture, wrap_vec2i(trail_pos, size_i), i32(i), vec4<f32>(features[i], 0, 0, 0));
-    }
+    // drop index and recency trail with toroidal wrapping
+    let trail_pos = vec2i(floor(position - orientation));
+    let wrapped_trail_pos = wrap_vec2i(trail_pos, size_i);
+    
+    textureStore(index_texture, wrapped_trail_pos, vec4u(idx + 1u, 0u, 0u, 0u));
+    textureStore(recency_texture, wrapped_trail_pos, vec4f(1.0, 0.0, 0.0, 0.0));
 
     let sensor_angle = controls.sensor_angle;
     let sensor_offset = controls.sensor_offset;
@@ -134,10 +142,8 @@ fn clear(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    for (var i = 0u; i < FEATURE_DIMENSION; i++) {
-        textureStore(feature_texture, idx, i32(i), vec4f(0.0));
-        textureStore(parameters_texture, idx, i32(i), vec4f(0.0));
-    }
+    textureStore(index_texture, idx, vec4u(0u));
+    textureStore(recency_texture, idx, vec4f(0.0));
 }
 
 @compute @workgroup_size(16, 16)
@@ -148,7 +154,13 @@ fn update_textures(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
     
-    for (var i = 0u; i < FEATURE_DIMENSION; i++) {
-        textureStore(feature_texture, idx, i32(i), controls.decay_rate * textureLoad(feature_texture, idx, i32(i)) );
+    var recency = textureLoad(recency_texture, idx).x;
+    recency *= controls.decay_rate;
+
+    if (recency < 0.5) {
+        textureStore(index_texture, idx, vec4u(0u));
+        textureStore(recency_texture, idx, vec4f(0.0));
+    } else {
+        textureStore(recency_texture, idx, vec4f(recency, 0.0, 0.0, 0.0));
     }
 }

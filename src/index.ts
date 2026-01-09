@@ -59,18 +59,13 @@ async function main() {
     /*bindings=*/ Object.values(BINDINGS[GROUP_INDEX].TEXTURE),
     /*data=*/ {},
     /*size=*/ {
-      depthOrArrayLayers: {
-        [BINDINGS[GROUP_INDEX].TEXTURE.RENDER]: 4,
-        [BINDINGS[GROUP_INDEX].TEXTURE.PARAMETERS]: FEATURE_DIMENSION,
-        [BINDINGS[GROUP_INDEX].TEXTURE.FEATURE]: FEATURE_DIMENSION,
-      },
       width: size.width,
       height: size.height,
     },
     /*format=*/ {
       [BINDINGS[GROUP_INDEX].TEXTURE.RENDER]: "r32float",
-      [BINDINGS[GROUP_INDEX].TEXTURE.FEATURE]: "r32float",
-      [BINDINGS[GROUP_INDEX].TEXTURE.PARAMETERS]: "r32float",
+      [BINDINGS[GROUP_INDEX].TEXTURE.INDEX]: "r32uint",
+      [BINDINGS[GROUP_INDEX].TEXTURE.RECENCY]: "r32float",
     }
   );
 
@@ -140,10 +135,7 @@ async function main() {
     "{{FEATURE_DIMENSION}}",
     FEATURE_DIMENSION.toString()
   );
-  const processedRenderShader = renderShader.replaceAll(
-    "{{FEATURE_DIMENSION}}",
-    FEATURE_DIMENSION.toString()
-  );
+  const processedRenderShader = renderShader;
 
   // traditional render pipeline of vert -> frag
   const render = await createRenderPipeline(

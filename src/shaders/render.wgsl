@@ -1,6 +1,5 @@
 #import includes::bindings
 #import includes::textures
-#import includes::interactions
 #import includes::canvas
 
 struct VertexOutput {
@@ -33,14 +32,11 @@ fn vert(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 @fragment
 fn frag(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
 
-    const FEATURE_DIMENSION: u32 = {{FEATURE_DIMENSION}}u;
     let x = vec2<i32>(uv * vec2<f32>(canvas.size));
     var color = vec3f(0.05, 0.05, 0.1);
 
-    var feature_intensity = vec3f(0.0);
-    var feature_selection = 0;
-    let val = textureLoad(feature_texture, x, feature_selection).x;
-    feature_intensity += val;
-    color += feature_intensity;
+    let recency = textureLoad(recency_texture, x).x;
+    color += vec3f(recency * 0.5, recency * 0.8, recency);
+    
     return vec4<f32>(color, 1.0);
 }
