@@ -35,7 +35,7 @@ const shaderIncludes: Record<string, string> = {
 
 const NODE_COUNT = 10000;
 const WORKGROUP_SIZE = 256;
-const FEATURE_DIMENSION = 5;
+const FEATURE_DIMENSION = 3;
 
 // Inject constants into shader includes
 shaderIncludes.nodes = shaderIncludes.nodes.replaceAll(
@@ -154,11 +154,6 @@ async function main() {
     compute: { module: module, entryPoint: "initialize" },
   });
 
-  const clear = device.createComputePipeline({
-    layout: pipeline.layout,
-    compute: { module: module, entryPoint: "clear" },
-  });
-
   const update_positions = device.createComputePipeline({
     layout: pipeline.layout,
     compute: { module: module, entryPoint: "update_positions" },
@@ -180,9 +175,6 @@ async function main() {
 
     const pass = encoder.beginComputePass();
     pass.setBindGroup(pipeline.index, pipeline.bindGroup);
-
-    pass.setPipeline(clear);
-    pass.dispatchWorkgroups(...WORKGROUP_COUNT_TEXTURE);
 
     pass.setPipeline(initialize);
     pass.dispatchWorkgroups(WORKGROUP_COUNT_BUFFER);

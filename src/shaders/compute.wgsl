@@ -136,17 +136,6 @@ fn rotate(v: vec2<f32>, angle: f32) -> vec2<f32> {
 }
 
 @compute @workgroup_size(16, 16)
-fn clear(@builtin(global_invocation_id) id: vec3<u32>) {
-    let idx = vec2i(id.xy);
-    if (idx.x >= canvas.size.x || idx.y >= canvas.size.y) {
-        return;
-    }
-
-    textureStore(index_texture, idx, vec4u(0u));
-    textureStore(recency_texture, idx, vec4f(0.0));
-}
-
-@compute @workgroup_size(16, 16)
 fn update_textures(@builtin(global_invocation_id) id: vec3<u32>) {
     let idx = vec2i(id.xy);
 
@@ -157,7 +146,7 @@ fn update_textures(@builtin(global_invocation_id) id: vec3<u32>) {
     var recency = textureLoad(recency_texture, idx).x;
     recency *= controls.decay_rate;
 
-    if (recency < 0.5) {
+    if (recency < 0.001) {
         textureStore(index_texture, idx, vec4u(0u));
         textureStore(recency_texture, idx, vec4f(0.0));
     } else {
