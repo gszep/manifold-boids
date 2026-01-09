@@ -81,33 +81,28 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
     textureStore(index_texture, vec2i(x), vec4u(idx + 1, 0, 0, 0));
     textureStore(recency_texture, vec2i(x), vec4f(1.0, 0.0, 0.0, 0.0));
 
-    let center_pos = x + orientation * controls.sensor_offset;
-    let left_pos = x + rotate(orientation, controls.sensor_angle) * controls.sensor_offset;
-    let right_pos = x + rotate(orientation, -controls.sensor_angle) * controls.sensor_offset;
+    let forward = cosine_similarity(idx, x + orientation * controls.sensor_offset);
+    let left = cosine_similarity(idx, x + rotate(orientation, controls.sensor_angle) * controls.sensor_offset);
+    let right = cosine_similarity(idx, x + rotate(orientation, -controls.sensor_angle) * controls.sensor_offset);
 
-    let pull_center = cosine_similarity(idx, center_pos);
-    let pull_left = cosine_similarity(idx, left_pos);
-    let pull_right = cosine_similarity(idx, right_pos);
-
-    var turn_dir = 0.0;
-    if (pull_center > pull_left && pull_center > pull_right) {
-        turn_dir = 0.0;
-    } else if (pull_center < pull_left && pull_center < pull_right) {
-        turn_dir = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
-    } else if (pull_left > pull_right) {
-        turn_dir = controls.steer_angle;
-    } else if (pull_right > pull_left) {
-        turn_dir = -controls.steer_angle;
+    var turn = 0.0;
+    if (forward > left && forward > right) {
+        turn = 0.0;
+    } else if (forward < left && forward < right) {
+        turn = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
+    } else if (left > right) {
+        turn = controls.steer_angle;
+    } else if (right > left) {
+        turn = -controls.steer_angle;
     }
 
     // Low signal random walk
-    if (pull_center + pull_left + pull_right < 0.01) {
-        turn_dir = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
+    if (forward + left + right < 0.01) {
+        turn = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
     }
 
-    let speed = 1.0;
-    nodes[idx].orientation = rotate(orientation, turn_dir);
-    nodes[idx].position += speed * nodes[idx].orientation;
+    nodes[idx].orientation = rotate(orientation, turn);
+    nodes[idx].position += nodes[idx].orientation;
 
     // periodic boundary conditions
     nodes[idx].position = wrapf(nodes[idx].position);
