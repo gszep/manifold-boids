@@ -37,7 +37,7 @@ npm run capture
 **Note**: The default opens `dist/index.html` directly:
 - No dev server needed
 - Visible browser by default (so WebGPU screenshots work)
-- Run `npm run build` for a specific example first to generate the dist folder
+- Run `npm run build` first to generate the dist folder
 - For live dev server testing: use `--url http://localhost:5500`
 
 ## Output Structure
@@ -86,7 +86,8 @@ Each capture session creates a timestamped directory:
 Check if your simulation is working without opening a browser:
 
 ```bash
-npm run capture:quick
+npm run build
+npm run capture
 cat .capture/session-*/console.log
 ```
 
