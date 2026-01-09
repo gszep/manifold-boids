@@ -165,31 +165,24 @@ async function main() {
   ];
 
   const initializeNodes = () => {
-    const nodesData = new ArrayBuffer(NODE_COUNT * nodes.byteSize);
-    const view = new DataView(nodesData);
-
     for (let i = 0; i < NODE_COUNT; i++) {
-      const base = i * nodes.byteSize;
-
       // id: u32
-      view.setUint32(base + nodes.offsets.id, i, true);
+      nodes.id[i] = i;
 
       // position: vec2<f32>
-      view.setFloat32(base + nodes.offsets.position, Math.random() * size.width, true);
-      view.setFloat32(base + nodes.offsets.position + 4, Math.random() * size.height, true);
+      nodes.position[i] = [Math.random() * size.width, Math.random() * size.height];
 
       // orientation: vec2<f32>
       const angle = Math.random() * 2 * Math.PI;
-      view.setFloat32(base + nodes.offsets.orientation, Math.cos(angle), true);
-      view.setFloat32(base + nodes.offsets.orientation + 4, Math.sin(angle), true);
+      nodes.orientation[i] = [Math.cos(angle), Math.sin(angle)];
 
       // features: array<f32, FEATURE_DIMENSION>
+      const features: number[] = [];
       for (let j = 0; j < FEATURE_DIMENSION; j++) {
-        view.setFloat32(base + nodes.offsets.features + j * 4, Math.random(), true);
+        features.push(Math.random());
       }
+      nodes.features[i] = features;
     }
-
-    device.queue.writeBuffer(nodes._gpubuffer, 0, nodesData);
   };
   initializeNodes();
 
