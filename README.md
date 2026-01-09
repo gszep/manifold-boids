@@ -8,7 +8,7 @@ This project implements a non-linear dimensionality reduction algorithm inspired
 
 1.  **High-Dimensional Features**: Each boid is initialized with a random high-dimensional feature vector stored in a storage buffer.
 2.  **Index and Recency Trails**: As boids move across the 2D plane, they write their unique ID to an **Index Texture** and reset a corresponding pixel in a **Recency Texture** to 1.0.
-3.  **Recency-Based Decay**: The Recency Texture decays over time. When a pixel's recency falls below a threshold (0.5), the index at that location is cleared, effectively "forgetting" the trail.
+3.  **Recency-Based Decay**: The Recency Texture decays over time. When a pixel's recency falls below zero, the index at that location is cleared, effectively "forgetting" the trail.
 4.  **Cosine Similarity Sensing**: Boids use three sensors (left, center, right) to sample the Index Texture. They retrieve the feature vector of the boid that last visited that location and calculate the **cosine similarity** with their own features.
 5.  **Emergent Clustering**: Boids steer toward regions with higher feature similarity. Over time, boids with similar feature vectors follow each other's trails and form localized clusters.
 6.  **Spatial Embedding**: The final 2D positions of the boids serve as a low-dimensional representation of the original high-dimensional feature space, where spatial proximity correlates with feature similarity.
