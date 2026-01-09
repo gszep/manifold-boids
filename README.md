@@ -1,2 +1,2 @@
-# manifold-lensing
-Interactive dimensionality reduction
+# manifold-boids
+Interactive dimensionality reduction using Boids
