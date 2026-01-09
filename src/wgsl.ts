@@ -112,7 +112,7 @@ function vec(n: 2 | 3 | 4, elementType: WgslTypeDescriptor): WgslTypeDescriptor 
     alignment = 4 * T_align;
   }
 
-  // Spec examples:
+  // Spec definitions:
   // vec3<f32>: size 12 (3*4), align 16 (4*4)
   // vec2<f16>: size 4 (2*2), align 4 (2*2)
 

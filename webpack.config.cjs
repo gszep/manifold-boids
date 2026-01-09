@@ -14,7 +14,7 @@ module.exports = () => {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        title: "WebGPU App",
+        title: "Manifold Boids",
         template: "src/index.html",
       }),
       new FaviconsWebpackPlugin('src/assets/favicon.ico'),
