@@ -41,6 +41,22 @@ fn wrap_vec2f(v: vec2f, size: vec2f) -> vec2f {
     return v - size * floor(v / size);
 }
 
+fn cosine_similarity(pos: vec2i, features: array<f32, FEATURE_DIMENSION>) -> f32 {
+    var dot = 0.0;
+    var norm_a_sq = 0.0;
+    var norm_b_sq = 0.0;
+
+    for (var i = 0u; i < FEATURE_DIMENSION; i++) {
+        let a = features[i];
+        let b = textureLoad(feature_texture, pos, i32(i)).x;
+        dot += a * b;
+        norm_a_sq += a * a;
+        norm_b_sq += b * b;
+    }
+
+    return dot / (sqrt(norm_a_sq) * sqrt(norm_b_sq) + 1e-6);
+}
+
 @compute @workgroup_size(256)
 fn update_positions(@builtin(global_invocation_id) id : vec3u) {
     let count = arrayLength(&nodes);
@@ -74,34 +90,9 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
     let wrapped_left = wrap_vec2i(vec2i(floor(left_pos)), size_i);
     let wrapped_right = wrap_vec2i(vec2i(floor(right_pos)), size_i);
 
-    var dot_center = 0.0;
-    var dot_left = 0.0;
-    var dot_right = 0.0;
-    var norm_center_sq = 0.0;
-    var norm_left_sq = 0.0;
-    var norm_right_sq = 0.0;
-    var norm_feature_sq = 0.0;
-
-    for (var i = 0u; i < FEATURE_DIMENSION; i++) {
-        let f = features[i];
-        norm_feature_sq += f * f;
-
-        let s_center = textureLoad(feature_texture, wrapped_center, i32(i)).x;
-        dot_center += s_center * f;
-        norm_center_sq += s_center * s_center;
-
-        let s_left = textureLoad(feature_texture, wrapped_left, i32(i)).x;
-        dot_left += s_left * f;
-        norm_left_sq += s_left * s_left;
-
-        let s_right = textureLoad(feature_texture, wrapped_right, i32(i)).x;
-        dot_right += s_right * f;
-        norm_right_sq += s_right * s_right;
-    }
-
-    let pull_center = dot_center / (sqrt(norm_center_sq) * sqrt(norm_feature_sq) + 1e-6);
-    let pull_left = dot_left / (sqrt(norm_left_sq) * sqrt(norm_feature_sq) + 1e-6);
-    let pull_right = dot_right / (sqrt(norm_right_sq) * sqrt(norm_feature_sq) + 1e-6);
+    let pull_center = cosine_similarity(wrapped_center, features);
+    let pull_left = cosine_similarity(wrapped_left, features);
+    let pull_right = cosine_similarity(wrapped_right, features);
 
     var turn_dir = 0.0;
     if (pull_center > pull_left && pull_center > pull_right) {
