@@ -81,10 +81,12 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
     textureStore(index_texture, vec2i(x), vec4u(idx + 1, 0, 0, 0));
     textureStore(recency_texture, vec2i(x), vec4f(1.0, 0.0, 0.0, 0.0));
 
+    // sense similarity in three directions
     let forward = cosine_similarity(idx, x + orientation * controls.sensor_offset);
     let left = cosine_similarity(idx, x + rotate(orientation, controls.sensor_angle) * controls.sensor_offset);
     let right = cosine_similarity(idx, x + rotate(orientation, -controls.sensor_angle) * controls.sensor_offset);
 
+    // decide turn direction
     var turn = 0.0;
     if (forward > left && forward > right) {
         turn = 0.0;
@@ -96,7 +98,7 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
         turn = -controls.steer_angle;
     }
 
-    // Low signal random walk
+    // low signal random walk
     if (forward + left + right < 0.01) {
         turn = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
     }
