@@ -144,9 +144,9 @@ fn update_textures(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     
     var recency = textureLoad(recency_texture, idx).x;
-    recency *= controls.decay_rate;
+    recency -= pow(10, -controls.persistence);
 
-    if (recency < 0.001) {
+    if (recency < 0) {
         textureStore(index_texture, idx, vec4u(0u));
         textureStore(recency_texture, idx, vec4f(0.0));
     } else {

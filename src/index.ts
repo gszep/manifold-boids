@@ -219,17 +219,17 @@ async function main() {
   controls.compute_steps = 200;
   gui.add(controls, "compute_steps").min(1).max(200).step(1).name("Compute Steps");
 
-  controls.sensor_angle = 2.371220827102661;
+  controls.sensor_angle = 2.1394829750061035;
   gui.add(controls, "sensor_angle").min(0.01).max(Math.PI).name("Sensor Angle");
 
-  controls.sensor_offset = 50;
+  controls.sensor_offset = 16.97599983215332;
   gui.add(controls, "sensor_offset").min(2).max(50).name("Sensor Offset");
 
-  controls.steer_angle = 1.0246360301971436;
+  controls.steer_angle = 0.9463462233543396;
   gui.add(controls, "steer_angle").min(0.01).max(Math.PI).name("Steer Angle");
 
-  controls.decay_rate = 0.999;
-  gui.add(controls, "decay_rate").min(0.9).max(1.0).step(0.001).name("Trail Decay Rate");
+  controls.persistence = 2.359999895095825;
+  gui.add(controls, "persistence").min(0).max(5.0).step(0.01).name("Trail Persistence");
 
   function frame() {
     for (let i = 0; i < controls.compute_steps; i++) {
