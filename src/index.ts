@@ -11,6 +11,7 @@ import {
   setupTextures,
 } from "./utils";
 import { Struct, bindingsFromWGSL } from "./wgsl";
+import { loadMNISTFeatures } from "./mnist";
 
 import computeShader from "./shaders/compute.wgsl";
 import renderShader from "./shaders/render.wgsl";
@@ -33,9 +34,9 @@ const shaderIncludes: Record<string, string> = {
   interactions: interactions,
 };
 
-const NODE_COUNT = 10000;
+const NODE_COUNT = 1000; // Reduced for testing MNIST integration
 const WORKGROUP_SIZE = 256;
-const FEATURE_DIMENSION = 3;
+const FEATURE_DIMENSION = 784; // MNIST: 28x28 pixels
 
 // Inject constants into shader includes
 shaderIncludes.nodes = shaderIncludes.nodes.replaceAll(
@@ -164,7 +165,12 @@ async function main() {
     Math.ceil(textures.size.height / Math.sqrt(WORKGROUP_SIZE)),
   ];
 
-  const initializeNodes = () => {
+  const initializeNodes = async () => {
+    // Load MNIST features
+    console.log("Loading MNIST dataset...");
+    const mnistFeatures = await loadMNISTFeatures(NODE_COUNT);
+    console.log("MNIST dataset loaded");
+
     // Pre-populate the CPU-side buffer directly
     const view = new DataView(nodes._buffer);
 
@@ -183,16 +189,16 @@ async function main() {
       view.setFloat32(base + nodes.offsets.orientation, Math.cos(angle), true);
       view.setFloat32(base + nodes.offsets.orientation + 4, Math.sin(angle), true);
 
-      // features: array<f32, FEATURE_DIMENSION>
+      // features: array<f32, FEATURE_DIMENSION> - from MNIST dataset
       for (let j = 0; j < FEATURE_DIMENSION; j++) {
-        view.setFloat32(base + nodes.offsets.features + j * 4, Math.random(), true);
+        view.setFloat32(base + nodes.offsets.features + j * 4, mnistFeatures[i][j], true);
       }
     }
 
     // Single GPU write after populating entire buffer
     device.queue.writeBuffer(nodes._gpubuffer, 0, nodes._buffer);
   };
-  initializeNodes();
+  await initializeNodes();
 
   // compute pass - physics simulation
   function computePass() {
