@@ -222,7 +222,7 @@ export class Struct {
   /**
    * A map of field names to their byte offsets within the buffer.
    */
-  public readonly offsets: Readonly<Record<string, number>> = {};
+  public readonly offsets!: Readonly<Record<string, number>>;
 
   /**
    * The GPUDevice this struct is associated with.
@@ -376,54 +376,89 @@ export class Struct {
         }
       };
 
+      const struct = this;
+      const getElementProxy = (elementIndex: number) => {
+        const elementProxy: any = new Proxy({} as any, {
+          get: (__, subProp) => {
+            if (typeof subProp === "symbol") {
+              if (subProp === Symbol.iterator) {
+                return function* () {
+                  for (let i = 0; i < componentCount; i++) yield getComponent(elementIndex, i);
+                };
+              }
+              if (subProp === Symbol.toPrimitive) {
+                return (hint: string) => {
+                  if (componentCount === 1) {
+                    return getComponent(elementIndex, 0);
+                  }
+                  return undefined;
+                };
+              }
+              return undefined;
+            }
+
+            if (subProp === "length") return componentCount;
+
+            // Support field[0] even if count is 1 for consistency
+            if (struct.count === 1 && subProp === "0") return elementProxy;
+
+            const componentIndex = Number(subProp);
+            if (!isNaN(componentIndex) && componentIndex < componentCount)
+              return getComponent(elementIndex, componentIndex);
+            return undefined;
+          },
+          set: (__, subProp, val) => {
+            if (typeof subProp === "symbol") return false;
+
+            if (struct.count === 1 && subProp === "0") {
+              if (componentCount === 1) {
+                setComponent(elementIndex, 0, val as number | boolean);
+              } else if (Array.isArray(val) && val.length === componentCount) {
+                for (let i = 0; i < componentCount; i++) setComponent(elementIndex, i, val[i]);
+              }
+              return true;
+            }
+            const componentIndex = Number(subProp);
+            if (!isNaN(componentIndex) && componentIndex < componentCount) {
+              setComponent(elementIndex, componentIndex, val as number | boolean);
+              return true;
+            }
+            return false;
+          },
+        });
+        return elementProxy;
+      };
+
       const fieldProxy = new Proxy({} as any, {
         get: (_, prop) => {
-          if (prop === Symbol.iterator) {
-            const self = this;
-            return function* () {
-              for (let i = 0; i < self.count; i++) {
-                yield fieldProxy[i];
-              }
-            };
+          if (typeof prop === "symbol") {
+            if (prop === Symbol.iterator) {
+              const self = this;
+              return function* () {
+                for (let i = 0; i < self.count; i++) {
+                  yield fieldProxy[i];
+                }
+              };
+            }
+            return undefined;
           }
+
           if (prop === "length") return this.count;
 
           const elementIndex = Number(prop);
           if (!isNaN(elementIndex) && elementIndex < this.count) {
             if (componentCount === 1) return getComponent(elementIndex, 0);
-            return new Proxy({} as any, {
-              get: (__, subProp) => {
-                if (subProp === Symbol.iterator) {
-                  return function* () {
-                    for (let i = 0; i < componentCount; i++) {
-                      yield getComponent(elementIndex, i);
-                    }
-                  };
-                }
-                if (subProp === "length") return componentCount;
-
-                const componentIndex = Number(subProp);
-                if (!isNaN(componentIndex) && componentIndex < componentCount)
-                  return getComponent(elementIndex, componentIndex);
-                return undefined;
-              },
-              set: (__, subProp, val) => {
-                const componentIndex = Number(subProp);
-                if (!isNaN(componentIndex) && componentIndex < componentCount) {
-                  setComponent(elementIndex, componentIndex, val);
-                  return true;
-                }
-                return false;
-              },
-            });
+            return getElementProxy(elementIndex);
           }
           return undefined;
         },
         set: (_, prop, val) => {
+          if (typeof prop === "symbol") return false;
+
           const elementIndex = Number(prop);
           if (!isNaN(elementIndex) && elementIndex < this.count) {
             if (componentCount === 1) {
-              setComponent(elementIndex, 0, val);
+              setComponent(elementIndex, 0, val as number | boolean);
             } else if (Array.isArray(val) && val.length === componentCount) {
               for (let j = 0; j < componentCount; j++) setComponent(elementIndex, j, val[j]);
             }
@@ -436,8 +471,17 @@ export class Struct {
       Object.defineProperty(this, fieldName, {
         enumerable: true,
         configurable: true, // Allows re-definition
-        get: () => fieldProxy,
+        get: () => {
+          // If count is 1, return the value directly for compatibility (e.g. with lil-gui)
+          if (this.count === 1) {
+            if (componentCount === 1) return getComponent(0, 0);
+            return getElementProxy(0);
+          }
+          return fieldProxy;
+        },
         set: (value: any) => {
+          // Maintaining backward compatibility: setting the field directly
+          // updates the first element (index 0).
           fieldProxy[0] = value;
         },
       });
