@@ -9,8 +9,8 @@ import {
   renderPass,
   requestDevice,
   setupTextures,
-} from "../../utils";
-import { Struct, bindingsFromWGSL } from "../../wgsl";
+} from "./utils";
+import { Struct, bindingsFromWGSL } from "./wgsl";
 
 import computeShader from "./shaders/compute.wgsl";
 import renderShader from "./shaders/render.wgsl";
