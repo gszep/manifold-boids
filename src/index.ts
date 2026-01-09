@@ -148,11 +148,6 @@ async function main() {
   // Create compute pipelines
   const module = await createShader(device, processedComputeShader, shaderIncludes);
 
-  const initialize = device.createComputePipeline({
-    layout: pipeline.layout,
-    compute: { module: module, entryPoint: "initialize" },
-  });
-
   const update_positions = device.createComputePipeline({
     layout: pipeline.layout,
     compute: { module: module, entryPoint: "update_positions" },
@@ -169,19 +164,34 @@ async function main() {
     Math.ceil(textures.size.height / Math.sqrt(WORKGROUP_SIZE)),
   ];
 
-  function submit_initialization() {
-    const encoder = device.createCommandEncoder();
+  const initializeNodes = () => {
+    const nodesData = new ArrayBuffer(NODE_COUNT * nodes.byteSize);
+    const view = new DataView(nodesData);
 
-    const pass = encoder.beginComputePass();
-    pass.setBindGroup(pipeline.index, pipeline.bindGroup);
+    for (let i = 0; i < NODE_COUNT; i++) {
+      const base = i * nodes.byteSize;
 
-    pass.setPipeline(initialize);
-    pass.dispatchWorkgroups(WORKGROUP_COUNT_BUFFER);
+      // id: u32
+      view.setUint32(base + nodes.offsets.id, i, true);
 
-    pass.end();
-    device.queue.submit([encoder.finish()]);
-  }
-  submit_initialization();
+      // position: vec2<f32>
+      view.setFloat32(base + nodes.offsets.position, Math.random() * size.width, true);
+      view.setFloat32(base + nodes.offsets.position + 4, Math.random() * size.height, true);
+
+      // orientation: vec2<f32>
+      const angle = Math.random() * 2 * Math.PI;
+      view.setFloat32(base + nodes.offsets.orientation, Math.cos(angle), true);
+      view.setFloat32(base + nodes.offsets.orientation + 4, Math.sin(angle), true);
+
+      // features: array<f32, FEATURE_DIMENSION>
+      for (let j = 0; j < FEATURE_DIMENSION; j++) {
+        view.setFloat32(base + nodes.offsets.features + j * 4, Math.random(), true);
+      }
+    }
+
+    device.queue.writeBuffer(nodes._gpubuffer, 0, nodesData);
+  };
+  initializeNodes();
 
   // compute pass - physics simulation
   function computePass() {
@@ -213,7 +223,7 @@ async function main() {
   }
 
   const gui = new GUI();
-  gui.add({ reset: () => submit_initialization() }, "reset");
+  gui.add({ reset: () => initializeNodes() }, "reset");
 
   controls.compute_steps = 200;
   gui.add(controls, "compute_steps").min(1).max(200).step(1).name("Compute Steps");

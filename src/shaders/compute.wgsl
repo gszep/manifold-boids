@@ -9,29 +9,6 @@ const PI = 3.14159265358979323846;
 const EPS = bitcast<f32>(0x2F800000u);
 const FEATURE_DIMENSION: u32 = {{FEATURE_DIMENSION}}u;
 
-@compute @workgroup_size(256)
-fn initialize(@builtin(global_invocation_id) id : vec3u) {
-    let count = arrayLength(&nodes);
-    let idx = id.x;
-
-    if (idx >= count) {
-        return;
-    }
-    
-    nodes[idx].id = idx;
-    
-    // Random initialization
-    let rand = random_uniform_buffer(idx);
-    nodes[idx].position = rand.xy * vec2f(canvas.size);
-    
-    let angle = rand.z * 2.0 * PI;
-    nodes[idx].orientation = vec2<f32>(cos(angle), sin(angle));
-
-    for (var i = 0u; i < FEATURE_DIMENSION; i++) {
-        nodes[idx].features[i] = random_uniform(idx + i);
-    }
-}
-
 fn wrap(x: vec2i) -> vec2i {
     let size = canvas.size;
     return (x + size) % size;
