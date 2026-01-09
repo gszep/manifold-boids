@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" href="assets/favicon.ico" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebGPU 2D Simulation Template</title>
+    <style>
+      body {
+        background-color: #000000;
+        margin: 0;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .webgpu-not-supported {
+        visibility: hidden;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 255, 255, 0.95);
+        padding: 2rem;
+        border-radius: 8px;
+        text-align: center;
+        max-width: 400px;
+      }
+      .webgpu-not-supported h2 {
+        color: #d32f2f;
+        margin-top: 0;
+      }
+      .webgpu-not-supported p {
+        color: #333;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="webgpu-not-supported">
+      <h2>WebGPU Not Supported</h2>
+      <p>
+        Your browser does not support WebGPU. Please use Chrome 113+, Edge 113+,
+        or Safari 18+ with WebGPU enabled.
+      </p>
+    </div>
+  </body>
+</html>
