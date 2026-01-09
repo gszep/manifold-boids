@@ -1,6 +1,6 @@
 /**
  * Simple MNIST dataloader
- * Fetches MNIST digits and provides them as normalized feature vectors
+ * Fetches MNIST digits from a public JSON source or generates synthetic data
  */
 
 interface MNISTDigit {
@@ -13,26 +13,98 @@ interface MNISTDataset {
   labels: number[];
 }
 
-// Fetch MNIST data from public source
-async function fetchMNISTData(count: number = 10000): Promise<MNISTDataset> {
-  try {
-    // Try to fetch from a public MNIST JSON dataset
-    // Using a simplified MNIST dataset hosted on CDN
-    const response = await fetch(
-      "https://raw.githubusercontent.com/zalandoresearch/fashion-mnist/master/data/fashion/t10k-images-idx3-ubyte"
-    );
+// Public MNIST JSON sources that work
+const MNIST_SOURCES = [
+  // TensorFlow.js example dataset (small subset)
+  "https://storage.googleapis.com/tfjs-examples/mnist_data.json",
+  // Kaggle MNIST JSON (if available)
+  "https://raw.githubusercontent.com/firstcontributions/mnist-dataset/main/mnist.json",
+];
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch MNIST data");
+/**
+ * Fetch MNIST data from public JSON sources
+ * Falls back to synthetic generation if all sources fail
+ */
+async function fetchMNISTData(count: number = 1000): Promise<MNISTDataset> {
+  // Try each MNIST source
+  for (const source of MNIST_SOURCES) {
+    try {
+      console.log(`Fetching MNIST from ${source}...`);
+      
+      // Create abort controller for timeout (5 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(source, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.warn(`Source ${source} returned ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json();
+      console.log(`Successfully loaded MNIST from ${source}`);
+
+      // Parse whatever format we got
+      return parseJsonMNIST(data, count);
+    } catch (error) {
+      console.warn(`Failed to fetch from ${source}:`, error);
+      continue;
     }
-
-    // For simplicity, we'll generate synthetic MNIST-like data locally
-    // This avoids network issues and provides consistent reproducible data
-    return generateSyntheticMNIST(count);
-  } catch (error) {
-    console.warn("Could not fetch MNIST data, using synthetic dataset:", error);
-    return generateSyntheticMNIST(count);
   }
+
+  // All sources failed, use synthetic
+  console.warn(
+    "All MNIST sources failed. Using synthetic dataset. For real MNIST, consider:"
+  );
+  console.warn(
+    "1. Download from https://yann.lecun.com/exdb/mnist/ (requires binary parsing)"
+  );
+  console.warn(
+    "2. Use Kaggle API: kaggle datasets download -d mnguyen0312/mnist"
+  );
+  console.warn("3. Use TensorFlow Datasets: tfds.load('mnist')");
+
+  return generateSyntheticMNIST(count);
+}
+
+/**
+ * Parse MNIST data from various JSON formats
+ */
+function parseJsonMNIST(data: any, count: number): MNISTDataset {
+  const images: number[][] = [];
+  const labels: number[] = [];
+
+  // TensorFlow.js format: { train: [...], test: [...] }
+  if (data.train && Array.isArray(data.train)) {
+    const samples = data.train.slice(0, count);
+    samples.forEach((sample: any) => {
+      images.push(
+        (sample.image || sample.pixels || Object.values(sample)).flat() as number[]
+      );
+      labels.push(sample.label || 0);
+    });
+    return { images, labels };
+  }
+
+  // Direct array format: [{image: [...], label: ...}, ...]
+  if (Array.isArray(data)) {
+    const samples = data.slice(0, count);
+    samples.forEach((sample: any) => {
+      if (sample.image && sample.label !== undefined) {
+        images.push(Array.from(sample.image) as number[]);
+        labels.push(sample.label);
+      }
+    });
+    if (images.length > 0) {
+      return { images, labels };
+    }
+  }
+
+  // If parsing failed, fall back to synthetic
+  console.warn("Could not parse MNIST JSON format, generating synthetic data");
+  return generateSyntheticMNIST(count);
 }
 
 /**
