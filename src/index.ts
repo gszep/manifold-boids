@@ -35,7 +35,7 @@ const shaderIncludes: Record<string, string> = {
 
 const NODE_COUNT = 10000;
 const WORKGROUP_SIZE = 256;
-const FEATURE_DIMENSION = 4;
+const FEATURE_DIMENSION = 3;
 
 // Inject constants into shader includes
 shaderIncludes.nodes = shaderIncludes.nodes.replaceAll(

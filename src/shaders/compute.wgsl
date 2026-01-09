@@ -6,6 +6,7 @@
 #import includes::random
 
 const PI = 3.14159265358979323846;
+const EPS = bitcast<f32>(0x2F800000u);
 const FEATURE_DIMENSION: u32 = {{FEATURE_DIMENSION}}u;
 
 @compute @workgroup_size(256)
@@ -41,25 +42,27 @@ fn wrapf(x: vec2f) -> vec2f {
     return (x + size) % size;
 }
 
-fn cosine_similarity(x: vec2i, a: array<f32, FEATURE_DIMENSION>) -> f32 {
-    let id = textureLoad(index_texture, x).x;
-    if (id == 0) {
-        return 0.0;  // nothing at position, return zero similarity
+fn cosine_similarity(idx: u32, x: vec2f) -> f32 {
+    let id = textureLoad(index_texture, wrap(vec2i(x))).x;
+
+    if (id == 0) {  // if nothing present
+        return 0.0;
     }
 
-    let b = nodes[id - 1].features;
+    let a = nodes[idx].features;
+    let b = nodes[id - 1].features;  // adjust for 1-based indexing
 
-    var dot = 0.0;
-    var norm_a_sq = 0.0;
-    var norm_b_sq = 0.0;
+    var ab = 0.0;
+    var aa = 0.0;
+    var bb = 0.0;
 
     for (var i = 0u; i < FEATURE_DIMENSION; i++) {
-        dot += a[i] * b[i];
-        norm_a_sq += a[i] * a[i];
-        norm_b_sq += b[i] * b[i];
+        ab += a[i] * b[i];
+        aa += a[i] * a[i];
+        bb += b[i] * b[i];
     }
 
-    return dot / (sqrt(norm_a_sq) * sqrt(norm_b_sq) + 1e-6);
+    return ab / (sqrt(aa) * sqrt(bb) + EPS);
 }
 
 @compute @workgroup_size(256)
@@ -71,47 +74,35 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
         return;
     }
 
-    let position = nodes[idx].position;
-    let features = nodes[idx].features;
+    let x = nodes[idx].position;
     let orientation = nodes[idx].orientation;
 
-    // drop index and recency trail with toroidal wrapping
-    let trail_pos = vec2i(floor(position - orientation));
-    let wrapped_trail_pos = wrap(trail_pos);
-    
-    textureStore(index_texture, wrapped_trail_pos, vec4u(idx + 1, 0, 0, 0));
-    textureStore(recency_texture, wrapped_trail_pos, vec4f(1.0, 0.0, 0.0, 0.0));
+    // drop recency trail with 1-based index
+    textureStore(index_texture, vec2i(x), vec4u(idx + 1, 0, 0, 0));
+    textureStore(recency_texture, vec2i(x), vec4f(1.0, 0.0, 0.0, 0.0));
 
-    let sensor_angle = controls.sensor_angle;
-    let sensor_offset = controls.sensor_offset;
-    let steer_angle = controls.steer_angle;
+    let center_pos = x + orientation * controls.sensor_offset;
+    let left_pos = x + rotate(orientation, controls.sensor_angle) * controls.sensor_offset;
+    let right_pos = x + rotate(orientation, -controls.sensor_angle) * controls.sensor_offset;
 
-    let center_pos = position + orientation * sensor_offset;
-    let left_pos = position + rotate(orientation, sensor_angle) * sensor_offset;
-    let right_pos = position + rotate(orientation, -sensor_angle) * sensor_offset;
-
-    let wrapped_center = wrap(vec2i(floor(center_pos)));
-    let wrapped_left = wrap(vec2i(floor(left_pos)));
-    let wrapped_right = wrap(vec2i(floor(right_pos)));
-
-    let pull_center = cosine_similarity(wrapped_center, features);
-    let pull_left = cosine_similarity(wrapped_left, features);
-    let pull_right = cosine_similarity(wrapped_right, features);
+    let pull_center = cosine_similarity(idx, center_pos);
+    let pull_left = cosine_similarity(idx, left_pos);
+    let pull_right = cosine_similarity(idx, right_pos);
 
     var turn_dir = 0.0;
     if (pull_center > pull_left && pull_center > pull_right) {
         turn_dir = 0.0;
     } else if (pull_center < pull_left && pull_center < pull_right) {
-        turn_dir = (random_uniform(idx) - 0.5) * 2.0 * steer_angle;
+        turn_dir = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
     } else if (pull_left > pull_right) {
-        turn_dir = steer_angle;
+        turn_dir = controls.steer_angle;
     } else if (pull_right > pull_left) {
-        turn_dir = -steer_angle;
+        turn_dir = -controls.steer_angle;
     }
 
     // Low signal random walk
     if (pull_center + pull_left + pull_right < 0.01) {
-        turn_dir = (random_uniform(idx) - 0.5) * 2.0 * steer_angle;
+        turn_dir = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
     }
 
     let speed = 1.0;
