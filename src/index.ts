@@ -36,6 +36,7 @@ const shaderIncludes: Record<string, string> = {
 const NODE_COUNT = 10000;
 const WORKGROUP_SIZE = 256;
 const FEATURE_DIMENSION = 3;
+const GMM_COMPONENTS = 5; // Number of Gaussian mixture components
 
 // Inject constants into shader includes
 shaderIncludes.nodes = shaderIncludes.nodes.replaceAll(
@@ -164,6 +165,56 @@ async function main() {
     Math.ceil(textures.size.height / Math.sqrt(WORKGROUP_SIZE)),
   ];
 
+  /**
+   * Gaussian mixture model component
+   */
+  interface GaussianComponent {
+    mean: number[];
+    stdDev: number;
+  }
+
+  /**
+   * Initialize Gaussian mixture model with random means and standard deviations
+   */
+  const initializeGMM = (numComponents: number, dimension: number): GaussianComponent[] => {
+    const components: GaussianComponent[] = [];
+    for (let i = 0; i < numComponents; i++) {
+      const mean = Array.from({ length: dimension }, () => Math.random());
+      const stdDev = Math.random() * 0.5 + 0.1; // Range [0.1, 0.6]
+      components.push({ mean, stdDev });
+    }
+    return components;
+  };
+
+  /**
+   * Box-Muller transform: generate standard normal sample
+   */
+  const sampleGaussian = (): number => {
+    const u1 = Math.random();
+    const u2 = Math.random();
+    // Clamp u1 to avoid log(0)
+    const r = Math.sqrt(-2 * Math.log(Math.max(u1, 1e-10)));
+    const theta = 2 * Math.PI * u2;
+    return r * Math.cos(theta);
+  };
+
+  /**
+   * Sample from a single Gaussian component
+   */
+  const sampleFromComponent = (component: GaussianComponent): number[] => {
+    return component.mean.map((mu) => mu + component.stdDev * sampleGaussian());
+  };
+
+  /**
+   * Sample from the mixture: select component uniformly, then sample from it
+   */
+  const sampleFromGMM = (components: GaussianComponent[]): number[] => {
+    const componentIdx = Math.floor(Math.random() * components.length);
+    return sampleFromComponent(components[componentIdx]);
+  };
+
+  const gmm = initializeGMM(GMM_COMPONENTS, FEATURE_DIMENSION);
+
   const initializeNodes = () => {
     // Pre-populate the CPU-side buffer directly
     const view = new DataView(nodes._buffer);
@@ -183,12 +234,10 @@ async function main() {
       view.setFloat32(base + nodes.offsets.orientation, Math.cos(angle), true);
       view.setFloat32(base + nodes.offsets.orientation + 4, Math.sin(angle), true);
 
-      // features: array<f32, FEATURE_DIMENSION>
-      const features: number[] = [];
+      // features: array<f32, FEATURE_DIMENSION> sampled from GMM
+      const features = sampleFromGMM(gmm);
       for (let j = 0; j < FEATURE_DIMENSION; j++) {
-        const val = Math.random();
-        features.push(val);
-        view.setFloat32(base + nodes.offsets.features + j * 4, val, true);
+        view.setFloat32(base + nodes.offsets.features + j * 4, features[j], true);
       }
 
       // label: u32 (argmax of features)
