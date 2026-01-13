@@ -57,6 +57,10 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
     // drop recency trail with 1-based index
     textureStore(index_texture, vec2i(x), vec4u(idx + 1, 0, 0, 0));
     textureStore(recency_texture, vec2i(x), vec4f(1.0, 0.0, 0.0, 0.0));
+    
+    // increment density at current position
+    let current_density = textureLoad(density_texture, vec2i(x)).x;
+    textureStore(density_texture, vec2i(x), vec4f(current_density + 0.1, 0.0, 0.0, 0.0));
 
     // sense similarity in three directions
     let forward = cosine_similarity(idx, x + orientation * controls.sensor_offset);
@@ -109,4 +113,9 @@ fn update_textures(@builtin(global_invocation_id) id: vec3<u32>) {
 
     textureStore(index_texture, x, u32(recency > 0.0) * vec4u(idx, 0, 0, 0));
     textureStore(recency_texture, x, vec4f(recency, 0.0, 0.0, 0.0));
+    
+    // apply density decay
+    let density = textureLoad(density_texture, x).x;
+    let density_decay = 0.95;  // decay factor < 1.0
+    textureStore(density_texture, x, vec4f(density * density_decay, 0.0, 0.0, 0.0));
 }

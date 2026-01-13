@@ -35,8 +35,8 @@ const shaderIncludes: Record<string, string> = {
 
 const NODE_COUNT = 10000;
 const WORKGROUP_SIZE = 256;
-const FEATURE_DIMENSION = 3;
-const GMM_COMPONENTS = 5; // Number of Gaussian mixture components
+const FEATURE_DIMENSION = 5;
+const GMM_COMPONENTS = 10; // Number of Gaussian mixture components
 
 // Inject constants into shader includes
 shaderIncludes.nodes = shaderIncludes.nodes.replaceAll(
@@ -66,6 +66,7 @@ async function main() {
     /*format=*/ {
       [BINDINGS[GROUP_INDEX].TEXTURE.INDEX]: "r32uint",
       [BINDINGS[GROUP_INDEX].TEXTURE.RECENCY]: "r32float",
+      [BINDINGS[GROUP_INDEX].TEXTURE.DENSITY]: "r32float",
     }
   );
 
@@ -209,7 +210,9 @@ async function main() {
    * Sample from the mixture: select component uniformly, then sample from it
    * Returns both the component index and the sampled features
    */
-  const sampleFromGMM = (components: GaussianComponent[]): { componentIdx: number; features: number[] } => {
+  const sampleFromGMM = (
+    components: GaussianComponent[]
+  ): { componentIdx: number; features: number[] } => {
     const componentIdx = Math.floor(Math.random() * components.length);
     const features = sampleFromComponent(components[componentIdx]);
     return { componentIdx, features };
@@ -286,13 +289,13 @@ async function main() {
   controls.compute_steps = 200;
   gui.add(controls, "compute_steps").min(1).max(200).step(1).name("Compute Steps");
 
-  controls.sensor_angle = 0.2;
+  controls.sensor_angle = 0.4;
   gui.add(controls, "sensor_angle").min(0.01).max(Math.PI).name("Sensor Angle");
 
-  controls.sensor_offset = 50;
+  controls.sensor_offset = 20;
   gui.add(controls, "sensor_offset").min(2).max(50).name("Sensor Offset");
 
-  controls.steer_angle = Math.PI / 2;
+  controls.steer_angle = 0.4;
   gui.add(controls, "steer_angle").min(0.01).max(Math.PI).name("Steer Angle");
 
   controls.persistence = 5.0;
