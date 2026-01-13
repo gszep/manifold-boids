@@ -30,15 +30,22 @@ fn vert(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     return output;
 }
 
-// Hardcoded colormap: HSV hues distributed across feature dimensions
+// Hardcoded colormap: 10 distinct colors for labels
 fn getColormapColor(label: u32) -> vec3<f32> {
-    let colors = array<vec3<f32>, 3>(
+    let colors = array<vec3<f32>, 10>(
         vec3<f32>(1.0, 0.0, 0.0),    // Red (label 0)
         vec3<f32>(0.0, 1.0, 0.0),    // Green (label 1)
-        vec3<f32>(0.0, 0.0, 1.0)     // Blue (label 2)
+        vec3<f32>(0.0, 0.0, 1.0),    // Blue (label 2)
+        vec3<f32>(1.0, 1.0, 0.0),    // Yellow (label 3)
+        vec3<f32>(0.0, 1.0, 1.0),    // Cyan (label 4)
+        vec3<f32>(1.0, 0.0, 1.0),    // Magenta (label 5)
+        vec3<f32>(1.0, 0.5, 0.0),    // Orange (label 6)
+        vec3<f32>(0.5, 0.0, 1.0),    // Purple (label 7)
+        vec3<f32>(0.5, 1.0, 0.0),    // Lime (label 8)
+        vec3<f32>(1.0, 0.0, 0.5)     // Pink (label 9)
     );
     
-    if (label < 3u) {
+    if (label < 10u) {
         return colors[label];
     }
     return vec3<f32>(1.0, 1.0, 1.0); // White for out-of-range
