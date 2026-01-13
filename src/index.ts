@@ -207,10 +207,12 @@ async function main() {
 
   /**
    * Sample from the mixture: select component uniformly, then sample from it
+   * Returns both the component index and the sampled features
    */
-  const sampleFromGMM = (components: GaussianComponent[]): number[] => {
+  const sampleFromGMM = (components: GaussianComponent[]): { componentIdx: number; features: number[] } => {
     const componentIdx = Math.floor(Math.random() * components.length);
-    return sampleFromComponent(components[componentIdx]);
+    const features = sampleFromComponent(components[componentIdx]);
+    return { componentIdx, features };
   };
 
   const gmm = initializeGMM(GMM_COMPONENTS, FEATURE_DIMENSION);
@@ -235,21 +237,13 @@ async function main() {
       view.setFloat32(base + nodes.offsets.orientation + 4, Math.sin(angle), true);
 
       // features: array<f32, FEATURE_DIMENSION> sampled from GMM
-      const features = sampleFromGMM(gmm);
+      const { componentIdx, features } = sampleFromGMM(gmm);
       for (let j = 0; j < FEATURE_DIMENSION; j++) {
         view.setFloat32(base + nodes.offsets.features + j * 4, features[j], true);
       }
 
-      // label: u32 (argmax of features)
-      let maxIdx = 0;
-      let maxVal = features[0];
-      for (let j = 1; j < FEATURE_DIMENSION; j++) {
-        if (features[j] > maxVal) {
-          maxVal = features[j];
-          maxIdx = j;
-        }
-      }
-      view.setUint32(base + nodes.offsets.label, maxIdx, true);
+      // label: u32 (which component the feature was drawn from)
+      view.setUint32(base + nodes.offsets.label, componentIdx, true);
     }
 
     // Single GPU write after populating entire buffer
