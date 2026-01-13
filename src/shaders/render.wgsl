@@ -2,6 +2,7 @@
 #import includes::textures
 #import includes::canvas
 #import includes::nodes
+#import includes::controls
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
@@ -57,12 +58,21 @@ fn frag(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
     let x = vec2<i32>(uv * vec2<f32>(canvas.size));
     var color = vec3f(0.05, 0.05, 0.1);
 
-    let index = textureLoad(index_texture, x).x;
-    if (index == 0) {  // if no data present, then return background color
-        return vec4<f32>(color, 1.0);
+    if (controls.visualization_mode == 0u) {
+        // Label visualization mode
+        let index = textureLoad(index_texture, x).x;
+        if (index == 0) {  // if no data present, then return background color
+            return vec4<f32>(color, 1.0);
+        }
+        
+        let label = nodes[index - 1].label;
+        color += getColormapColor(label);
+    } else {
+        // Density visualization mode
+        let density = textureLoad(density_texture, x).x;
+        // Map density to grayscale: density * 0.5 to keep it from overexposing
+        color += vec3<f32>(density * 0.5, density * 0.5, density * 0.5);
     }
     
-    let label = nodes[index - 1].label;
-    color += getColormapColor(label);
     return vec4<f32>(color, 1.0);
 }
