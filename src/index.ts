@@ -184,9 +184,23 @@ async function main() {
       view.setFloat32(base + nodes.offsets.orientation + 4, Math.sin(angle), true);
 
       // features: array<f32, FEATURE_DIMENSION>
+      const features: number[] = [];
       for (let j = 0; j < FEATURE_DIMENSION; j++) {
-        view.setFloat32(base + nodes.offsets.features + j * 4, Math.random(), true);
+        const val = Math.random();
+        features.push(val);
+        view.setFloat32(base + nodes.offsets.features + j * 4, val, true);
       }
+
+      // label: u32 (argmax of features)
+      let maxIdx = 0;
+      let maxVal = features[0];
+      for (let j = 1; j < FEATURE_DIMENSION; j++) {
+        if (features[j] > maxVal) {
+          maxVal = features[j];
+          maxIdx = j;
+        }
+      }
+      view.setUint32(base + nodes.offsets.label, maxIdx, true);
     }
 
     // Single GPU write after populating entire buffer

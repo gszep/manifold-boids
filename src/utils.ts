@@ -290,35 +290,46 @@ export function createPipelineLayout(
   bindGroup: GPUBindGroup;
   layout: GPUPipelineLayout;
 } {
-  const bindGroupLayout = device.createBindGroupLayout({
-    label: "bindGroupLayout",
-    entries: [
-      ...Object.values(BINDINGS.TEXTURE).map((binding) => ({
+  const layoutEntries: GPUBindGroupLayoutEntry[] = [];
+  const groupEntries: GPUBindGroupEntry[] = [];
+
+  // Storage textures (INDEX, RECENCY)
+  for (const binding of Object.values(BINDINGS.TEXTURE)) {
+    if (textures.bindingLayout[binding]) {
+      layoutEntries.push({
         binding: binding,
         visibility: visibility,
         storageTexture: textures.bindingLayout[binding],
-      })),
-      ...Object.values(BINDINGS.BUFFER).map((binding) => ({
-        binding: binding,
-        visibility: visibility,
-        buffer: { type: buffers[binding].type as GPUBufferBindingType },
-      })),
-    ],
+      });
+      groupEntries.push({
+        binding,
+        resource: textures.textures[binding].createView(),
+      });
+    }
+  }
+
+  // Buffers
+  for (const binding of Object.values(BINDINGS.BUFFER)) {
+    layoutEntries.push({
+      binding: binding,
+      visibility: visibility,
+      buffer: { type: buffers[binding].type as GPUBufferBindingType },
+    });
+    groupEntries.push({
+      binding,
+      resource: { buffer: buffers[binding].buffer },
+    });
+  }
+
+  const bindGroupLayout = device.createBindGroupLayout({
+    label: "bindGroupLayout",
+    entries: layoutEntries,
   });
 
   const bindGroup = device.createBindGroup({
     label: `bindGroup`,
     layout: bindGroupLayout,
-    entries: [
-      ...Object.values(BINDINGS.TEXTURE).map((binding) => ({
-        binding,
-        resource: textures.textures[binding].createView(),
-      })),
-      ...Object.values(BINDINGS.BUFFER).map((binding) => ({
-        binding,
-        resource: { buffer: buffers[binding].buffer },
-      })),
-    ],
+    entries: groupEntries,
   });
 
   const pipelineLayout = device.createPipelineLayout({

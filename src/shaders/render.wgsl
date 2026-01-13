@@ -30,15 +30,32 @@ fn vert(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     return output;
 }
 
+// Hardcoded colormap: HSV hues distributed across feature dimensions
+fn getColormapColor(label: u32) -> vec3<f32> {
+    let colors = array<vec3<f32>, 3>(
+        vec3<f32>(1.0, 0.0, 0.0),    // Red (label 0)
+        vec3<f32>(0.0, 1.0, 0.0),    // Green (label 1)
+        vec3<f32>(0.0, 0.0, 1.0)     // Blue (label 2)
+    );
+    
+    if (label < 3u) {
+        return colors[label];
+    }
+    return vec3<f32>(1.0, 1.0, 1.0); // White for out-of-range
+}
+
 @fragment
 fn frag(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
 
     let x = vec2<i32>(uv * vec2<f32>(canvas.size));
     var color = vec3f(0.05, 0.05, 0.1);
 
-    let index = textureLoad(index_texture, x).x - 1;
-    let feature = nodes[index].features;
-
-    color += vec3<f32>(feature[0], feature[1], feature[2]);
+    let index = textureLoad(index_texture, x).x;
+    if (index == 0) {  // if no data present, then return background color
+        return vec4<f32>(color, 1.0);
+    }
+    
+    let label = nodes[index - 1].label;
+    color += getColormapColor(label);
     return vec4<f32>(color, 1.0);
 }
