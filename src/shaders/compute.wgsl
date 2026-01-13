@@ -42,6 +42,10 @@ fn cosine_similarity(idx: u32, x: vec2f) -> f32 {
     return ab / (sqrt(aa) * sqrt(bb) + EPS);
 }
 
+fn sample_density(x: vec2f) -> f32 {
+    return textureLoad(density_texture, wrap(vec2i(x))).x;
+}
+
 @compute @workgroup_size(256)
 fn update_positions(@builtin(global_invocation_id) id : vec3u) {
     let count = arrayLength(&nodes);
@@ -66,21 +70,37 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
     let forward = cosine_similarity(idx, x + orientation * controls.sensor_offset);
     let left = cosine_similarity(idx, x + rotate(orientation, controls.sensor_angle) * controls.sensor_offset);
     let right = cosine_similarity(idx, x + rotate(orientation, -controls.sensor_angle) * controls.sensor_offset);
+    
+    // sense density in three directions for repulsion
+    let density_forward = sample_density(x + orientation * controls.sensor_offset);
+    let density_left = sample_density(x + rotate(orientation, controls.sensor_angle) * controls.sensor_offset);
+    let density_right = sample_density(x + rotate(orientation, -controls.sensor_angle) * controls.sensor_offset);
+    
+    // repulsion signal: positive where density is lower (turn toward lower density areas)
+    let repulsion_forward = 1.0 - density_forward;
+    let repulsion_left = 1.0 - density_left;
+    let repulsion_right = 1.0 - density_right;
 
-    // decide turn direction
+    // decide turn direction based on similarity and density repulsion
     var turn = 0.0;
-    if (forward > left && forward > right) {
+    
+    // blend similarity attraction with density repulsion
+    let forward_score = forward - repulsion_forward * controls.density_repulsion_strength;
+    let left_score = left - repulsion_left * controls.density_repulsion_strength;
+    let right_score = right - repulsion_right * controls.density_repulsion_strength;
+    
+    if (forward_score > left_score && forward_score > right_score) {
         turn = 0.0;
-    } else if (forward < left && forward < right) {
+    } else if (forward_score < left_score && forward_score < right_score) {
         turn = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
-    } else if (left > right) {
+    } else if (left_score > right_score) {
         turn = controls.steer_angle;
-    } else if (right > left) {
+    } else if (right_score > left_score) {
         turn = -controls.steer_angle;
     }
 
     // low signal random walk
-    if (forward + left + right < 0.01) {
+    if (forward_score + left_score + right_score < 0.01) {
         turn = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
     }
 

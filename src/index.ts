@@ -304,6 +304,9 @@ async function main() {
   controls.visualization_mode = 0;
   gui.add(controls, "visualization_mode", { Label: 0, Density: 1 }).name("Visualization");
 
+  controls.density_repulsion_strength = 0.5;
+  gui.add(controls, "density_repulsion_strength").min(0).max(2.0).step(0.1).name("Density Repulsion");
+
   function frame() {
     for (let i = 0; i < controls.compute_steps; i++) {
       canvas.key = [canvas.key[0] + 1, canvas.key[1]];
