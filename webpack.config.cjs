@@ -14,7 +14,7 @@ module.exports = () => {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        title: "Manifold Boids",
+        title: "Trail-Guided Embedding",
         template: "src/index.html",
       }),
       new FaviconsWebpackPlugin('src/assets/favicon.ico'),

@@ -1,7 +1,7 @@
 {
-  "name": "manifold-boids",
+  "name": "trail-guided-embedding",
   "version": "1.0.0",
-  "description": "Interactive dimensionality reduction using Boids.",
+  "description": "Interactive dimensionality reduction using trail-guided embedding.",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

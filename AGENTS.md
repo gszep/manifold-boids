@@ -2,7 +2,7 @@
 
 ## Core Algorithm Understanding
 
-The manifold-boids project implements a novel dimensionality reduction algorithm using emergent boid dynamics. Key concepts for agents to understand:
+The trail-guided embedding project implements a novel dimensionality reduction algorithm using emergent trail-following dynamics. Key concepts for agents to understand:
 
 1. **Dataset Size = Node Count**: n=10,000 (NODE_COUNT constant)
 2. **Feature Dimensionality**: d=3 (FEATURE_DIMENSION constant) 
@@ -13,13 +13,13 @@ The manifold-boids project implements a novel dimensionality reduction algorithm
 
 ### Primary Implementation Files
 - `src/index.ts`: Main entry point with initialization, WebGPU setup, and simulation loop
-- `src/shaders/compute.wgsl`: Core compute shader implementing boid physics and similarity sensing
+- `src/shaders/compute.wgsl`: Core compute shader implementing data point physics and similarity sensing
 - `src/shaders/render.wgsl`: Rendering logic for visualization
 - `src/shaders/includes/nodes.wgsl`: Node data structure definition
 
 ### Key Functions to Understand
 - `cosine_similarity()` in compute.wgsl: How feature similarity is computed
-- `update_positions()`: Main boid update logic
+- `update_positions()`: Main data point update logic
 - `initializeGMM()` and related functions: How synthetic dataset is generated
 - `setupTextures()`: Texture management for spatial indexing
 
