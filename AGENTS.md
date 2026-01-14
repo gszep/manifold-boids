@@ -4,7 +4,7 @@
 
 The trail-guided embedding project implements a novel dimensionality reduction algorithm using emergent trail-following dynamics. Key concepts for agents to understand:
 
-1. **Dataset Size = Node Count**: n=10,000 (NODE_COUNT constant)
+1. **Dataset Size = Data Point Count**: n=10,000 (DATA_POINT_COUNT constant)
 2. **Feature Dimensionality**: d=3 (FEATURE_DIMENSION constant) 
 3. **Dimensionality Reduction**: Maps from d=3 dimensions to 2D visualization space
 4. **Algorithm Type**: Real-time, continuous simulation vs. batch processing
@@ -15,11 +15,11 @@ The trail-guided embedding project implements a novel dimensionality reduction a
 - `src/index.ts`: Main entry point with initialization, WebGPU setup, and simulation loop
 - `src/shaders/compute.wgsl`: Core compute shader implementing data point physics and similarity sensing
 - `src/shaders/render.wgsl`: Rendering logic for visualization
-- `src/shaders/includes/nodes.wgsl`: Node data structure definition
+- `src/shaders/includes/data_points.wgsl`: DataPoint data structure definition
 
 ### Key Functions to Understand
 - `cosine_similarity()` in compute.wgsl: How feature similarity is computed
-- `update_positions()`: Main data point update logic
+- `update_positions()`: Main data point position update logic
 - `initializeGMM()` and related functions: How synthetic dataset is generated
 - `setupTextures()`: Texture management for spatial indexing
 
@@ -28,7 +28,7 @@ The trail-guided embedding project implements a novel dimensionality reduction a
 ### GPU-Centric Design
 - Leverages WebGPU for massive parallelization
 - Uses textures for O(1) spatial indexing instead of expensive neighbor searches
-- Employs storage buffers for node data
+- Employs storage buffers for data point data
 
 ### Emergent Behavior Pattern
 - No explicit optimization objective
@@ -43,10 +43,10 @@ The trail-guided embedding project implements a novel dimensionality reduction a
 ## Key Variables and Constants
 
 ### Algorithm Parameters (Defined in src/index.ts)
-- `NODE_COUNT = 10000`: Fixed dataset/node count
+- `DATA_POINT_COUNT = 10000`: Fixed dataset/data point count
 - `FEATURE_DIMENSION = 3`: Input feature dimensionality
 - `GMM_COMPONENTS = 3`: Number of Gaussian mixture components for synthetic data
-- `WORKGROUP_SIZE = 256`: GPU workgroup size for node updates
+- `WORKGROUP_SIZE = 256`: GPU workgroup size for data point updates
 
 ### Shader Constants (Injected into shaders)
 - Canvas size information
@@ -64,13 +64,13 @@ For agents analyzing performance characteristics:
 ## Shader Structure and Includes System
 
 ### Shader Organization
-- `compute.wgsl`: Physics simulation and node updates
+- `compute.wgsl`: Physics simulation and data point updates
 - `render.wgsl`: Visualization rendering
 - `includes/` directory: Shared WGSL code
 
 ### Include Files
 - `bindings.wgsl`: Binding layout definitions
-- `nodes.wgsl`: Node struct definition
+- `data_points.wgsl`: DataPoint struct definition
 - `textures.wgsl`: Texture declarations
 - `canvas.wgsl`: Canvas-related uniforms
 - `interactions.wgsl`: Interaction structs
@@ -95,7 +95,7 @@ Always capture after:
 ## Common Misconceptions to Avoid
 
 1. **Not a Traditional DR Algorithm**: No mathematical optimization objective, no convergence criteria
-2. **Dataset Size Fixed**: n=NODE_COUNT=10,000 is implementation constant, not variable parameter
+2. **Dataset Size Fixed**: n=DATA_POINT_COUNT=10,000 is implementation constant, not variable parameter
 3. **Feature Dimensionality Fixed**: d=FEATURE_DIMENSION=3 is implementation constant
 4. **Real-time vs. Batch**: Continuous simulation vs. one-time computation
 5. **Stochastic Nature**: Results vary between runs due to random initialization and sensing

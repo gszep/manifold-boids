@@ -19,12 +19,12 @@ import bindings from "./shaders/includes/bindings.wgsl";
 import canvas from "./shaders/includes/canvas.wgsl";
 import controls from "./shaders/includes/controls.wgsl";
 import interactions from "./shaders/includes/interactions.wgsl";
-import nodes from "./shaders/includes/nodes.wgsl";
+import dataPoints from "./shaders/includes/data_points.wgsl";
 import random from "./shaders/includes/random.wgsl";
 import textures from "./shaders/includes/textures.wgsl";
 
 const shaderIncludes: Record<string, string> = {
-  nodes: nodes,
+  data_points: dataPoints,
   random: random,
   canvas: canvas,
   controls: controls,
@@ -33,13 +33,13 @@ const shaderIncludes: Record<string, string> = {
   interactions: interactions,
 };
 
-const NODE_COUNT = 10000;
+const DATA_POINT_COUNT = 10000;
 const WORKGROUP_SIZE = 256;
 const FEATURE_DIMENSION = 3;
 const GMM_COMPONENTS = 3; // Number of Gaussian mixture components
 
 // Inject constants into shader includes
-shaderIncludes.nodes = shaderIncludes.nodes.replaceAll(
+shaderIncludes.data_points = shaderIncludes.data_points.replaceAll(
   "{{FEATURE_DIMENSION}}",
   FEATURE_DIMENSION.toString()
 );
@@ -85,22 +85,22 @@ async function main() {
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  const nodes = new Struct(shaderIncludes.nodes, device, {
-    label: "Nodes",
-    size: NODE_COUNT,
+  const dataPoints = new Struct(shaderIncludes.data_points, device, {
+    label: "DataPoints",
+    size: DATA_POINT_COUNT,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
   });
 
   const random = new Struct(shaderIncludes.random, device, {
     label: "Random",
-    size: NODE_COUNT,
+    size: DATA_POINT_COUNT,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
   });
 
-  random.x = getRandomValues(NODE_COUNT);
-  random.y = getRandomValues(NODE_COUNT);
-  random.z = getRandomValues(NODE_COUNT);
-  random.w = getRandomValues(NODE_COUNT);
+  random.x = getRandomValues(DATA_POINT_COUNT);
+  random.y = getRandomValues(DATA_POINT_COUNT);
+  random.z = getRandomValues(DATA_POINT_COUNT);
+  random.w = getRandomValues(DATA_POINT_COUNT);
 
   const buffers = {
     [BINDINGS[GROUP_INDEX].BUFFER.CANVAS]: {
@@ -115,8 +115,8 @@ async function main() {
       buffer: controls._gpubuffer,
       type: "uniform" as GPUBufferBindingType,
     },
-    [BINDINGS[GROUP_INDEX].BUFFER.NODES]: {
-      buffer: nodes._gpubuffer,
+    [BINDINGS[GROUP_INDEX].BUFFER.DATA_POINTS]: {
+      buffer: dataPoints._gpubuffer,
       type: "storage" as GPUBufferBindingType,
     },
     [BINDINGS[GROUP_INDEX].BUFFER.RANDOM]: {
@@ -160,7 +160,7 @@ async function main() {
     compute: { module: module, entryPoint: "update_textures" },
   });
 
-  const WORKGROUP_COUNT_BUFFER = Math.ceil(NODE_COUNT / WORKGROUP_SIZE);
+  const WORKGROUP_COUNT_BUFFER = Math.ceil(DATA_POINT_COUNT / WORKGROUP_SIZE);
   const WORKGROUP_COUNT_TEXTURE: [number, number] = [
     Math.ceil(textures.size.width / Math.sqrt(WORKGROUP_SIZE)),
     Math.ceil(textures.size.height / Math.sqrt(WORKGROUP_SIZE)),
@@ -220,39 +220,39 @@ async function main() {
 
   const gmm = initializeGMM(GMM_COMPONENTS, FEATURE_DIMENSION);
 
-  const initializeNodes = () => {
+  const initializeDataPoints = () => {
     // Pre-populate the CPU-side buffer directly
-    const view = new DataView(nodes._buffer);
+    const view = new DataView(dataPoints._buffer);
 
-    for (let i = 0; i < NODE_COUNT; i++) {
-      const base = i * nodes.byteSize;
+    for (let i = 0; i < DATA_POINT_COUNT; i++) {
+      const base = i * dataPoints.byteSize;
 
       // id: u32
-      view.setUint32(base + nodes.offsets.id, i, true);
+      view.setUint32(base + dataPoints.offsets.id, i, true);
 
       // position: vec2<f32>
-      view.setFloat32(base + nodes.offsets.position, Math.random() * size.width, true);
-      view.setFloat32(base + nodes.offsets.position + 4, Math.random() * size.height, true);
+      view.setFloat32(base + dataPoints.offsets.position, Math.random() * size.width, true);
+      view.setFloat32(base + dataPoints.offsets.position + 4, Math.random() * size.height, true);
 
       // orientation: vec2<f32>
       const angle = Math.random() * 2 * Math.PI;
-      view.setFloat32(base + nodes.offsets.orientation, Math.cos(angle), true);
-      view.setFloat32(base + nodes.offsets.orientation + 4, Math.sin(angle), true);
+      view.setFloat32(base + dataPoints.offsets.orientation, Math.cos(angle), true);
+      view.setFloat32(base + dataPoints.offsets.orientation + 4, Math.sin(angle), true);
 
       // features: array<f32, FEATURE_DIMENSION> sampled from GMM
       const { componentIdx, features } = sampleFromGMM(gmm);
       for (let j = 0; j < FEATURE_DIMENSION; j++) {
-        view.setFloat32(base + nodes.offsets.features + j * 4, features[j], true);
+        view.setFloat32(base + dataPoints.offsets.features + j * 4, features[j], true);
       }
 
       // label: u32 (which component the feature was drawn from)
-      view.setUint32(base + nodes.offsets.label, componentIdx, true);
+      view.setUint32(base + dataPoints.offsets.label, componentIdx, true);
     }
 
     // Single GPU write after populating entire buffer
-    device.queue.writeBuffer(nodes._gpubuffer, 0, nodes._buffer);
+    device.queue.writeBuffer(dataPoints._gpubuffer, 0, dataPoints._buffer);
   };
-  initializeNodes();
+  initializeDataPoints();
 
   // compute pass - physics simulation
   function computePass() {
@@ -284,7 +284,7 @@ async function main() {
   }
 
   const gui = new GUI();
-  gui.add({ reset: () => initializeNodes() }, "reset");
+  gui.add({ reset: () => initializeDataPoints() }, "reset");
 
   controls.compute_steps = 200;
   gui.add(controls, "compute_steps").min(1).max(200).step(1).name("Compute Steps");

@@ -8,7 +8,7 @@ struct BufferBindings {
   CANVAS: i32,
   INTERACTIONS: i32,
   CONTROLS: i32,
-  NODES: i32,
+  DATA_POINTS: i32,
   RANDOM: i32,
 }
 

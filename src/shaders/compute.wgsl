@@ -1,5 +1,5 @@
 #import includes::bindings
-#import includes::nodes
+#import includes::data_points
 #import includes::textures
 #import includes::canvas
 #import includes::controls
@@ -26,8 +26,8 @@ fn cosine_similarity(idx: u32, x: vec2f) -> f32 {
         return 0.0;
     }
 
-    let a = nodes[idx].features;
-    let b = nodes[id - 1].features;  // adjust for 1-based indexing
+    let a = data_points[idx].features;
+    let b = data_points[id - 1].features;  // adjust for 1-based indexing
 
     var ab = 0.0;
     var aa = 0.0;
@@ -48,15 +48,15 @@ fn sample_density(x: vec2f) -> f32 {
 
 @compute @workgroup_size(256)
 fn update_positions(@builtin(global_invocation_id) id : vec3u) {
-    let count = arrayLength(&nodes);
+    let count = arrayLength(&data_points);
     let idx = id.x;
     
     if (idx >= count) {
         return;
     }
 
-    let x = nodes[idx].position;
-    let orientation = nodes[idx].orientation;
+    let x = data_points[idx].position;
+    let orientation = data_points[idx].orientation;
 
     // drop recency trail with 1-based index
     textureStore(index_texture, vec2i(x), vec4u(idx + 1, 0, 0, 0));
@@ -104,11 +104,11 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
         turn = (random_uniform(idx) - 0.5) * 2.0 * controls.steer_angle;
     }
 
-    nodes[idx].orientation = rotate(orientation, turn);
-    nodes[idx].position += nodes[idx].orientation;
+    data_points[idx].orientation = rotate(orientation, turn);
+    data_points[idx].position += data_points[idx].orientation;
 
     // periodic boundary conditions
-    nodes[idx].position = wrapf(nodes[idx].position);
+    data_points[idx].position = wrapf(data_points[idx].position);
 }
 
 fn rotate(v: vec2<f32>, angle: f32) -> vec2<f32> {

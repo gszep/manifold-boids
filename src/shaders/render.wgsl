@@ -1,7 +1,7 @@
 #import includes::bindings
 #import includes::textures
 #import includes::canvas
-#import includes::nodes
+#import includes::data_points
 #import includes::controls
 
 struct VertexOutput {
@@ -65,7 +65,7 @@ fn frag(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
             return vec4<f32>(color, 1.0);
         }
         
-        let label = nodes[index - 1].label;
+        let label = data_points[index - 1].label;
         color += getColormapColor(label);
     } else {
         // Density visualization mode
