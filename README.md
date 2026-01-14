@@ -42,10 +42,10 @@ The algorithm operates through the following steps:
 ## Mathematical Notation
 
 Let us define the following parameters:
-- `n`: Dataset size (number of boids)
+- `n`: Dataset size
 - `d`: Original dimensionality of feature vectors
 - `t`: Time steps in the simulation
-- `k`: Number of sensor readings per boid per time step
+- `k`: Number of sensor readings per data point per time step
 
 ## Key Features
 
@@ -93,11 +93,11 @@ With consistent notation where:
 
 ### Computational Complexity
 
-The computational complexity of the manifold-boids algorithm can be broken down into its primary operations:
+The computational complexity of the algorithm can be broken down into its primary operations:
 
 #### Per-Time-Step Operations:
 1. **Texture Updates**: O(w×h) where w and h are the width and height of the canvas
-2. **Boid Position Updates**: O(n×k×d) for computing cosine similarities for each sensor
+2. **Position Updates**: O(n×k×d) for computing cosine similarities for each sensor
 3. **Trail Management**: O(n) for updating index and recency textures
 
 #### Total Complexity:
@@ -174,6 +174,6 @@ npm start        # Start dev server at http://localhost:5500
 
 ## Conclusion
 
-The manifold-boids algorithm presents a unique approach to dimensionality reduction that emphasizes emergent behavior and interactive visualization. While it may not replace mathematically rigorous methods like t-SNE or UMAP for analytical purposes, it offers distinct advantages for exploratory data analysis and educational applications where interactivity and visual intuition are paramount.
+The algorithm presents a unique approach to dimensionality reduction that emphasizes emergent behavior and interactive visualization. While it may not replace mathematically rigorous methods like t-SNE or UMAP for analytical purposes, it offers distinct advantages for exploratory data analysis and educational applications where interactivity and visual intuition are paramount.
 
 The algorithm performs genuine dimensionality reduction, transforming high-dimensional data (d dimensions) into a 2D visualization space. With dataset size n equating to node count, the algorithm efficiently processes data with O(t×n×d) computational complexity, making it particularly suitable for interactive exploration of moderately large datasets where real-time feedback and visual intuition are valuable.

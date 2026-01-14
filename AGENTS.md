@@ -32,7 +32,7 @@ The trail-guided embedding project implements a novel dimensionality reduction a
 
 ### Emergent Behavior Pattern
 - No explicit optimization objective
-- Clustering emerges from boid dynamics
+- Clustering emerges from dynamics
 - Continuous simulation vs. convergence-based algorithms
 
 ### Real-time Processing Model
