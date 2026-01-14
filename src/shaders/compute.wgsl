@@ -64,7 +64,7 @@ fn update_positions(@builtin(global_invocation_id) id : vec3u) {
     
     // increment density at current position
     let current_density = textureLoad(density_texture, vec2i(x)).x;
-    textureStore(density_texture, vec2i(x), vec4f(current_density + 0.1, 0.0, 0.0, 0.0));
+    textureStore(density_texture, vec2i(x), vec4f(current_density + 0.5, 0.0, 0.0, 0.0));
 
     // sense similarity in three directions
     let forward = cosine_similarity(idx, x + orientation * controls.sensor_offset);
